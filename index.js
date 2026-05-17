@@ -28,6 +28,8 @@ async function run() {
 
     const db = client.db("wanderlust");
     const destinationsCollection = db.collection("destions");
+    const bookingCollection = db.collection("bokking");
+
 
     await client.connect();
 
@@ -62,6 +64,24 @@ async function run() {
       {_id:new ObjectId(id)}
     )
     res.send(result)
+  })
+
+  app.get('/booking/:userId',async(req,res)=>{
+    const {userId}= req.params;
+    const result = await bookingCollection.find({userId}).toArray();
+    res.json(result);
+  })
+
+  app.post('/booking',async(req,res)=>{
+    const bodkigData= req.body;
+    const result = await bookingCollection.insertOne(bodkigData)
+    res.json(result)
+  })
+  
+  app.delete("/booking/:bookingId",async(req,res)=>{
+    const {bookingId}=req.params;
+    const result= await bookingCollection.deleteOne({_id:new ObjectId(bookingId)});
+    res.json(result)
   })
 
     app.post("/destinations", async(req,res)=>{
