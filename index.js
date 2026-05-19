@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 dotenv.config()
 
 const uri = process.env.MONGODB_URI;
@@ -33,6 +34,32 @@ async function run() {
 
     await client.connect();
 
+   const JWKS = createRemoteJWKSet(
+    new URL("http://localhost:3000/api/auth/jwks")
+   )
+    const verifyToken = async(req,res,next)=>{
+      const auhHeaders = req?.headers.authorization;
+      // console.log(auhHeaders);
+
+      if(!auhHeaders){
+        return res.status(401).json({message:"unauthorization"});
+      }
+      const token = auhHeaders.split(" ")[1];
+      // console.log(token);
+       if(!token){
+        return res.status(401).json({message:"unauthorization"});
+      }
+
+      try{
+        const {payload}=await jwtVerify(token,JWKS);
+        console.log(payload);
+        next();
+      }catch(error){
+        return res.status(403).json({message:"Forbidden"});
+      }
+
+    }
+
 
     app.get("/destination",async(req,res)=>{
       const result = await destinationsCollection.find().toArray();
@@ -40,7 +67,7 @@ async function run() {
       
     })
 
-    app.get("/destination/:id",async(req,res)=>{
+    app.get("/destination/:id",verifyToken,async(req,res)=>{
       const {id} = req.params;
       const result = await destinationsCollection.findOne({
         _id: new ObjectId(id)
@@ -72,7 +99,7 @@ async function run() {
     res.json(result);
   })
 
-  app.post('/booking',async(req,res)=>{
+  app.post('/booking',verifyToken,async(req,res)=>{
     const bodkigData= req.body;
     const result = await bookingCollection.insertOne(bodkigData)
     res.json(result)
